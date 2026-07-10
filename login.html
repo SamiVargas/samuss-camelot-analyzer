@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaMuSs Camelot Analyzer | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <section class="auth-brand">
+      <p class="eyebrow">GitHub Pages Edition</p>
+      <h1>SaMuSs Camelot Analyzer</h1>
+      <p class="brand-copy">
+        Analiza canciones desde el navegador, detecta BPM y tonalidad, convierte a Camelot y ordena playlists para mezcla armonica.
+      </p>
+      <div class="brand-metrics">
+        <span>Firebase Auth</span>
+        <span>Web Audio DSP</span>
+        <span>Camelot Wheel</span>
+      </div>
+    </section>
+
+    <section class="auth-card glass-panel">
+      <div class="auth-card-header">
+        <p class="eyebrow">Acceso seguro</p>
+        <h2 id="authTitle">Iniciar sesion</h2>
+      </div>
+
+      <form id="authForm" novalidate>
+        <label for="email">Correo electronico</label>
+        <input id="email" type="email" autocomplete="email" placeholder="dj@samuss.com" required>
+
+        <label for="password">Contrasena</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Minimo 6 caracteres" required>
+
+        <p id="authMessage" class="form-message" role="status" aria-live="polite"></p>
+
+        <button id="submitAuthButton" class="primary-button" type="submit">Iniciar sesion</button>
+      </form>
+
+      <button id="toggleAuthMode" class="ghost-button" type="button">Crear cuenta nueva</button>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      createAccount,
+      getFriendlyAuthError,
+      isValidEmail,
+      loginWithEmail,
+      watchAuthState
+    } from "./connection.js";
+
+    const authForm = document.querySelector("#authForm");
+    const emailInput = document.querySelector("#email");
+    const passwordInput = document.querySelector("#password");
+    const authTitle = document.querySelector("#authTitle");
+    const authMessage = document.querySelector("#authMessage");
+    const submitAuthButton = document.querySelector("#submitAuthButton");
+    const toggleAuthMode = document.querySelector("#toggleAuthMode");
+
+    let isCreateAccountMode = false;
+
+    /**
+     * Muestra feedback debajo del formulario.
+     */
+    function showMessage(message, type = "error") {
+      authMessage.textContent = message;
+      authMessage.dataset.type = type;
+    }
+
+    /**
+     * Cambia textos entre iniciar sesion y crear cuenta.
+     */
+    function renderAuthMode() {
+      authTitle.textContent = isCreateAccountMode ? "Crear cuenta" : "Iniciar sesion";
+      submitAuthButton.textContent = isCreateAccountMode ? "Crear cuenta" : "Iniciar sesion";
+      toggleAuthMode.textContent = isCreateAccountMode ? "Ya tengo cuenta" : "Crear cuenta nueva";
+      showMessage("", "neutral");
+    }
+
+    /**
+     * Valida correo y contrasena antes de enviar a Firebase.
+     */
+    function validateForm(email, password) {
+      if (!isValidEmail(email)) return "Ingresa un correo electronico valido.";
+      if (!password) return "La contrasena es obligatoria.";
+      if (isCreateAccountMode && password.length < 6) return "La contrasena debe tener al menos 6 caracteres.";
+      return "";
+    }
+
+    toggleAuthMode.addEventListener("click", () => {
+      isCreateAccountMode = !isCreateAccountMode;
+      renderAuthMode();
+    });
+
+    authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      const validationError = validateForm(email, password);
+
+      if (validationError) {
+        showMessage(validationError);
+        return;
+      }
+
+      submitAuthButton.disabled = true;
+      showMessage("Conectando con Firebase...", "neutral");
+
+      try {
+        if (isCreateAccountMode) {
+          await createAccount(email, password);
+        } else {
+          await loginWithEmail(email, password);
+        }
+
+        window.location.href = "index.html";
+      } catch (error) {
+        showMessage(getFriendlyAuthError(error));
+      } finally {
+        submitAuthButton.disabled = false;
+      }
+    });
+
+    watchAuthState((user) => {
+      if (user) window.location.href = "index.html";
+    });
+
+    renderAuthMode();
+  </script>
+</body>
+</html>
